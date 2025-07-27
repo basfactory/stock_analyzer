@@ -20,7 +20,7 @@ class NewsAPIClient:
         self.base_url = "https://newsapi.org/v2"
         self.cache = {}
     
-    def get_stock_news(self, symbols: List[str], language: str = 'ja', page_size: int = 10) -> List[Dict]:
+    def get_stock_news(self, symbols: List[str], language: str = 'en', page_size: int = 10) -> List[Dict]:
         """
         指定された銘柄のニュースを取得
         
@@ -137,13 +137,25 @@ class NewsAPIClient:
         """NewsAPIからニュースを取得"""
         url = f"{self.base_url}/everything"
         
+        # 日付範囲を設定（過去7日間）
+        from datetime import datetime, timedelta
+        to_date = datetime.now()
+        from_date = to_date - timedelta(days=7)
+        
         params = {
             'q': query,
-            'language': language,
             'sortBy': 'publishedAt',
             'pageSize': min(page_size, 20),  # APIの制限
-            'apiKey': self.api_key
+            'apiKey': self.api_key,
+            'from': from_date.strftime('%Y-%m-%d'),
+            'to': to_date.strftime('%Y-%m-%d')
         }
+        
+        # 言語パラメータは英語以外の場合のみ追加
+        if language != 'en':
+            params['language'] = language
+        
+        logger.info(f"NewsAPI リクエスト - クエリ: {query}, 言語: {language}, 期間: {params['from']} - {params['to']}")
         
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
@@ -151,7 +163,9 @@ class NewsAPIClient:
         data = response.json()
         
         if data.get('status') == 'ok':
-            return data.get('articles', [])
+            articles = data.get('articles', [])
+            logger.info(f"NewsAPI レスポンス - 記事数: {len(articles)}, 総数: {data.get('totalResults', 0)}")
+            return articles
         else:
             logger.error(f"NewsAPI エラー: {data.get('message', 'Unknown error')}")
             return []
@@ -175,7 +189,7 @@ class NewsAPIClient:
             logger.error(f"日付フォーマットエラー: {e}")
             return datetime.now(timezone(timedelta(hours=9))).strftime('%Y年%m月%d日 %H:%M')
     
-    def get_news_for_symbol(self, symbol: str, language: str = 'ja', page_size: int = 5) -> List[Dict]:
+    def get_news_for_symbol(self, symbol: str, language: str = 'en', page_size: int = 5) -> List[Dict]:
         """単一銘柄のニュースを取得"""
         return self.get_stock_news([symbol], language, page_size)
     
