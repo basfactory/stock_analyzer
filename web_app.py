@@ -292,11 +292,14 @@ class StockChartWebApp:
                 )
                 return fig, "銘柄を入力して「グラフ更新」をクリックしてください。"
             
-            # 入力された銘柄を収集
+            # 入力された銘柄を収集・検証
             symbols = []
             for stock in [stock1, stock2, stock3, stock4]:
                 if stock and stock.strip():
-                    symbols.append(stock.strip().upper())
+                    symbol = stock.strip().upper()
+                    # 基本的な形式チェック
+                    if self._is_valid_symbol_format(symbol):
+                        symbols.append(symbol)
             
             if not symbols:
                 fig = go.Figure()
@@ -457,7 +460,11 @@ class StockChartWebApp:
             trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
             
             if trigger_id == 'add-favorite-button' and add_clicks > 0 and symbol_input:
-                result = self.stock_manager.add_favorite_stock(symbol_input.strip().upper())
+                symbol = symbol_input.strip().upper()
+                if not self._is_valid_symbol_format(symbol):
+                    result = {'success': False, 'message': f'無効な銘柄コード形式: {symbol}'}
+                else:
+                    result = self.stock_manager.add_favorite_stock(symbol)
                 favorites = self.stock_manager.get_favorite_stocks()
                 
                 status_style = {'color': 'green' if result['success'] else 'red'}
@@ -642,6 +649,16 @@ class StockChartWebApp:
             news_items.append(news_item)
         
         return news_items
+    
+    def _is_valid_symbol_format(self, symbol: str) -> bool:
+        """株価シンボルの基本的な形式をチェック"""
+        import re
+        if not symbol or len(symbol) < 1 or len(symbol) > 12:
+            return False
+        # 基本的な英数字と一部の記号のみ許可
+        if not re.match(r'^[A-Z0-9.\-^]+$', symbol):
+            return False
+        return True
     
     def run(self, debug=True, host='127.0.0.1', port=8050):
         """Webアプリケーションを起動"""

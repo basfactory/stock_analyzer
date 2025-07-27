@@ -1,7 +1,7 @@
 import os
 import requests
 from typing import List, Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import logging
 
@@ -160,19 +160,20 @@ class NewsAPIClient:
         """日付文字列を日本語形式にフォーマット"""
         try:
             if not date_string:
-                return datetime.now().strftime('%Y年%m月%d日 %H:%M')
+                return datetime.now(timezone(timedelta(hours=9))).strftime('%Y年%m月%d日 %H:%M')
             
             # ISO形式の日付をパース
             dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
             
-            # 日本時間に変換（簡易版 - 9時間を加算）
-            dt_jst = dt + timedelta(hours=9)
+            # 日本時間に変換（適切なタイムゾーン処理）
+            jst = timezone(timedelta(hours=9))
+            dt_jst = dt.astimezone(jst)
             
             return dt_jst.strftime('%Y年%m月%d日 %H:%M')
         
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.error(f"日付フォーマットエラー: {e}")
-            return datetime.now().strftime('%Y年%m月%d日 %H:%M')
+            return datetime.now(timezone(timedelta(hours=9))).strftime('%Y年%m月%d日 %H:%M')
     
     def get_news_for_symbol(self, symbol: str, language: str = 'ja', page_size: int = 5) -> List[Dict]:
         """単一銘柄のニュースを取得"""

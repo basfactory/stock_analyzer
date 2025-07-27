@@ -100,8 +100,13 @@ class DatabaseManager:
             logger.info(f"お気に入り銘柄 {symbol} を追加しました")
             return True
             
-        except Exception as e:
+        except (psycopg2.Error, psycopg2.IntegrityError) as e:
             logger.error(f"お気に入り銘柄追加エラー: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+        except Exception as e:
+            logger.error(f"予期しないエラー (お気に入り銘柄追加): {e}")
             if self.connection:
                 self.connection.rollback()
             return False
@@ -128,8 +133,13 @@ class DatabaseManager:
             cursor.close()
             return result
             
-        except Exception as e:
+        except psycopg2.Error as e:
             logger.error(f"お気に入り銘柄削除エラー: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+        except Exception as e:
+            logger.error(f"予期しないエラー (お気に入り銘柄削除): {e}")
             if self.connection:
                 self.connection.rollback()
             return False
@@ -154,8 +164,11 @@ class DatabaseManager:
             
             return [dict(row) for row in favorites]
             
-        except Exception as e:
+        except psycopg2.Error as e:
             logger.error(f"お気に入り銘柄取得エラー: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"予期しないエラー (お気に入り銘柄取得): {e}")
             return []
     
     def get_favorite_symbols(self) -> List[str]:
@@ -175,8 +188,11 @@ class DatabaseManager:
             cursor.close()
             return result
             
-        except Exception as e:
+        except psycopg2.Error as e:
             logger.error(f"お気に入りチェックエラー: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"予期しないエラー (お気に入りチェック): {e}")
             return False
     
     def get_favorites_count(self) -> int:
@@ -191,8 +207,11 @@ class DatabaseManager:
             cursor.close()
             return count
             
-        except Exception as e:
+        except psycopg2.Error as e:
             logger.error(f"お気に入り数取得エラー: {e}")
+            return 0
+        except Exception as e:
+            logger.error(f"予期しないエラー (お気に入り数取得): {e}")
             return 0
     
     def close(self):
