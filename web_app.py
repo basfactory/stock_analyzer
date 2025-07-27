@@ -32,6 +32,7 @@ class StockChartWebApp:
                             dcc.Input(
                                 id=f'stock-input-{i}',
                                 type='text',
+                                value='',
                                 placeholder='例: AAPL, 7203.T',
                                 style={'width': '200px', 'margin-bottom': '10px'}
                             )
@@ -265,7 +266,7 @@ class StockChartWebApp:
                         if data is not None and not data.empty:
                             
                             # 移動平均線を追加
-                            if ma_enabled and 'show' in ma_enabled:
+                            if ma_enabled and isinstance(ma_enabled, list) and 'show' in ma_enabled:
                                 ma_data = self.stock_manager.calculate_moving_average(data, ma_period)
                                 color = self.colors[i % len(self.colors)]
                                 
@@ -279,7 +280,7 @@ class StockChartWebApp:
                                 ))
                             
                             # ボリンジャーバンドを追加
-                            if bb_enabled and 'show' in bb_enabled:
+                            if bb_enabled and isinstance(bb_enabled, list) and 'show' in bb_enabled:
                                 bb_data = self.stock_manager.calculate_bollinger_bands(data, bb_period, bb_std)
                                 color = self.colors[i % len(self.colors)]
                                 
