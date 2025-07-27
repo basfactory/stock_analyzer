@@ -58,6 +58,66 @@ class StockChartWebApp:
                         )
                     ], style={'margin-bottom': '30px'}),
                     
+                    # テクニカル指標セクション
+                    html.Div([
+                        html.H3("📊 テクニカル指標"),
+                        
+                        # 移動平均線
+                        html.Div([
+                            dcc.Checklist(
+                                id='ma-checkbox',
+                                options=[{'label': ' 移動平均線', 'value': 'show'}],
+                                value=[],
+                                style={'margin-bottom': '10px'}
+                            ),
+                            html.Div([
+                                html.Label("期間: ", style={'margin-right': '5px'}),
+                                dcc.Input(
+                                    id='ma-period',
+                                    type='number',
+                                    value=20,
+                                    min=1,
+                                    max=100,
+                                    style={'width': '60px', 'margin-right': '5px'}
+                                ),
+                                html.Label("日", style={'margin-right': '10px'})
+                            ], style={'margin-left': '20px', 'margin-bottom': '15px'})
+                        ]),
+                        
+                        # ボリンジャーバンド
+                        html.Div([
+                            dcc.Checklist(
+                                id='bb-checkbox',
+                                options=[{'label': ' ボリンジャーバンド', 'value': 'show'}],
+                                value=[],
+                                style={'margin-bottom': '10px'}
+                            ),
+                            html.Div([
+                                html.Label("期間: ", style={'margin-right': '5px'}),
+                                dcc.Input(
+                                    id='bb-period',
+                                    type='number',
+                                    value=20,
+                                    min=1,
+                                    max=100,
+                                    style={'width': '60px', 'margin-right': '5px'}
+                                ),
+                                html.Label("日", style={'margin-right': '10px'}),
+                                html.Label("σ: ", style={'margin-right': '5px'}),
+                                dcc.Input(
+                                    id='bb-std',
+                                    type='number',
+                                    value=2,
+                                    min=1,
+                                    max=3,
+                                    step=0.1,
+                                    style={'width': '60px', 'margin-right': '5px'}
+                                )
+                            ], style={'margin-left': '20px', 'margin-bottom': '15px'})
+                        ])
+                        
+                    ], style={'margin-bottom': '30px'}),
+                    
                     # アクションボタン
                     html.Div([
                         html.Button(
@@ -126,9 +186,14 @@ class StockChartWebApp:
              State('stock-input-1', 'value'),
              State('stock-input-2', 'value'),
              State('stock-input-3', 'value'),
-             State('period-selector', 'value')]
+             State('period-selector', 'value'),
+             State('ma-checkbox', 'value'),
+             State('ma-period', 'value'),
+             State('bb-checkbox', 'value'),
+             State('bb-period', 'value'),
+             State('bb-std', 'value')]
         )
-        def update_chart(n_clicks, stock1, stock2, stock3, stock4, period):
+        def update_chart(n_clicks, stock1, stock2, stock3, stock4, period, ma_enabled, ma_period, bb_enabled, bb_period, bb_std):
             if n_clicks == 0:
                 # 初期表示
                 fig = go.Figure()
@@ -190,6 +255,68 @@ class StockChartWebApp:
                         
                 except Exception as e:
                     error_messages.append(f"銘柄 '{symbol}' の処理中にエラーが発生しました: {str(e)}")
+            
+            # テクニカル指標を追加
+            if valid_data_count > 0:
+                # 最初の有効な銘柄のデータを使用してテクニカル指標を計算
+                for i, symbol in enumerate(symbols):
+                    try:
+                        data = self.stock_manager.get_stock_data(symbol, period)
+                        if data is not None and not data.empty:
+                            
+                            # 移動平均線を追加
+                            if ma_enabled and 'show' in ma_enabled:
+                                ma_data = self.stock_manager.calculate_moving_average(data, ma_period)
+                                color = self.colors[i % len(self.colors)]
+                                
+                                fig.add_trace(go.Scatter(
+                                    x=data.index,
+                                    y=ma_data,
+                                    mode='lines',
+                                    name=f"MA({ma_period}) - {symbol}",
+                                    line=dict(color=color, width=1, dash='dash'),
+                                    opacity=0.8
+                                ))
+                            
+                            # ボリンジャーバンドを追加
+                            if bb_enabled and 'show' in bb_enabled:
+                                bb_data = self.stock_manager.calculate_bollinger_bands(data, bb_period, bb_std)
+                                color = self.colors[i % len(self.colors)]
+                                
+                                # 上限線
+                                fig.add_trace(go.Scatter(
+                                    x=data.index,
+                                    y=bb_data['upper'],
+                                    mode='lines',
+                                    name=f"BB上限({bb_period},{bb_std}σ) - {symbol}",
+                                    line=dict(color=color, width=1, dash='dot'),
+                                    opacity=0.6
+                                ))
+                                
+                                # 下限線
+                                fig.add_trace(go.Scatter(
+                                    x=data.index,
+                                    y=bb_data['lower'],
+                                    mode='lines',
+                                    name=f"BB下限({bb_period},{bb_std}σ) - {symbol}",
+                                    line=dict(color=color, width=1, dash='dot'),
+                                    opacity=0.6,
+                                    fill='tonexty',
+                                    fillcolor=f'rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.1)'
+                                ))
+                                
+                                # 中央線（移動平均）
+                                fig.add_trace(go.Scatter(
+                                    x=data.index,
+                                    y=bb_data['middle'],
+                                    mode='lines',
+                                    name=f"BB中央({bb_period}) - {symbol}",
+                                    line=dict(color=color, width=1, dash='dash'),
+                                    opacity=0.7
+                                ))
+                                
+                    except Exception as e:
+                        error_messages.append(f"テクニカル指標の計算中にエラーが発生しました: {str(e)}")
             
             # グラフのレイアウトを更新
             fig.update_layout(

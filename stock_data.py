@@ -99,3 +99,37 @@ class StockDataManager:
             return not data.empty
         except:
             return False
+    
+    def calculate_moving_average(self, data: pd.DataFrame, window: int = 20) -> pd.Series:
+        """
+        移動平均線を計算する
+        
+        Args:
+            data: 株価データ
+            window: 移動平均の期間（デフォルト: 20日）
+        
+        Returns:
+            pd.Series: 移動平均データ
+        """
+        return data['Close'].rolling(window=window).mean()
+    
+    def calculate_bollinger_bands(self, data: pd.DataFrame, window: int = 20, std_dev: int = 2) -> Dict:
+        """
+        ボリンジャーバンドを計算する
+        
+        Args:
+            data: 株価データ
+            window: 移動平均の期間（デフォルト: 20日）
+            std_dev: 標準偏差の倍数（デフォルト: 2）
+        
+        Returns:
+            Dict: ボリンジャーバンドデータ（upper, lower, middle）
+        """
+        sma = data['Close'].rolling(window=window).mean()
+        std = data['Close'].rolling(window=window).std()
+        
+        return {
+            'upper': sma + (std * std_dev),
+            'lower': sma - (std * std_dev),
+            'middle': sma
+        }
